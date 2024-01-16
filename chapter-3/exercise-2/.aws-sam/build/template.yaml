@@ -1,0 +1,60 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: An AWS Serverless Application Model template describing your function.
+Resources:
+  exercise2LambdaFn:
+    Type: AWS::Serverless::Function
+    Properties:
+      CodeUri: exercise2LambdaFn
+      Description: ''
+      MemorySize: 128
+      Timeout: 3
+      Handler: exercise2.handler
+      Runtime: nodejs16.x
+      Architectures:
+      - x86_64
+      DeploymentPreference:
+        Type: Canary10Percent30Minutes
+        Alarms:
+        - Ref: exerciseErrorsAlarm
+      PackageType: Zip
+      AutoPublishAlias: live
+    Metadata:
+      SamResourceId: exercise2LambdaFn
+  exercise2LambdaVersion:
+    Type: AWS::Lambda::Version
+    Properties:
+      FunctionName:
+        Ref: exercise2LambdaFn
+  exercise2LambdaAlias:
+    Type: AWS::Lambda::Alias
+    Properties:
+      FunctionName:
+        Ref: exercise2LambdaFn
+      FunctionVersion:
+        Fn::GetAtt:
+        - exercise2LambdaVersion
+        - Version
+      Name: Prod
+  exercise2ErrorsAlarm:
+    Type: AWS::CloudWatch::Alarm
+    Properties:
+      EvaluationPeriods: 1
+      Statistic: Sum
+      Threshold: 1
+      AlarmDescription: Alarm if errors occur
+      Period: 60
+      Namespace: AWS/Lambda
+      AlarmActions:
+      - Ref: exercise2ErrorsSnsTopic
+      Dimensions:
+      - Name: FunctionName
+        Value:
+          Ref: exercise2LambdaFn
+      - Name: Resource
+        Value:
+          Fn::Sub: arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${exercise2LambdaFn}
+  exercise2ErrorsSnsTopic:
+    Type: AWS::SNS::Topic
+    Properties:
+      DisplayName: LambdaErrors
